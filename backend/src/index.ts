@@ -1,4 +1,4 @@
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 
 const wss = new WebSocketServer({ port: 8080 });
 
@@ -10,14 +10,21 @@ wss.on('connection', function connection(ws) {
 
   ws.on('message', function message(data: any) {
     const message = JSON.parse(data);
-    if(message.type === "identify-as-sender"){
+    if (message.type === 'sender') {
       senderSocket = ws;
-    } else if (message.type === "identify-as-receiver"){
+    } else if (message.type === 'receiver') {
       receiverSocket = ws;
-    } else if (message.type === "create-offer"){
-      receiverSocket?.send(JSON.stringify({type: "offer", offer: message.offer}))
-    } else if (message.type === "create-answere") {
-      senderSocket?.send(JSON.stringify({type: "answere", offer: message.offer}))
+    } else if (message.type === 'createOffer') {
+      if (ws !== senderSocket) {
+        return;
+      }
+      receiverSocket?.send(JSON.stringify({ type: 'createOffer', sdp: message.sdp }));
+    } else if (message.type === 'createAnswer') {
+      
+        if (ws !== receiverSocket) {
+          return;
+        }
+        senderSocket?.send(JSON.stringify({ type: 'createAnswer', sdp: message.sdp }));
     } else if (message.type === 'iceCandidate') {
       if (ws === senderSocket) {
         receiverSocket?.send(JSON.stringify({ type: 'iceCandidate', candidate: message.candidate }));
@@ -25,9 +32,5 @@ wss.on('connection', function connection(ws) {
         senderSocket?.send(JSON.stringify({ type: 'iceCandidate', candidate: message.candidate }));
       }
     }
-
-    console.log(message);
   });
-
-  ws.send('something');
 });
